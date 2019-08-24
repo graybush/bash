@@ -1,0 +1,16 @@
+#!/bin/bash
+
+path=()
+clean=()
+
+getlist() {
+  while IFS= read -d $'\0' -r file; do
+    printf 'File found: %s\n' "${file}"
+  done < <(find "${1}" -type f -name "${2}" -print0 -delete)
+}
+
+for i in ${path[@]}; do
+  for j in ${clean[@]}; do
+    getlist "${i}" "${j}"
+  done
+done
