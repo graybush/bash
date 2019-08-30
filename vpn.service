@@ -1,0 +1,119 @@
+#!/usr/local/bin/bash
+
+#
+# Transmission Startup script
+#
+
+###
+###### -- Application Specific Settings  -- #########
+#
+#
+NICE_NAME='Transmission'
+ROOT=$(dirname $(readlink -f "$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)/vpn.service"))
+APPSTATUS="pgrep -u transmission -f transmission"
+VPNSTATUS="pgrep -u root -f openvpn"
+#
+#
+###### -- Application Specific Settings  -- #########
+
+log() {
+  # Log to stdout
+  echo "$1"
+}
+
+start() {
+  log "Starting ${NICE_NAME}..."
+  ${VPNSTATUS} > /dev/null
+  if [ $? -eq 0 ]; then
+    log "VPN already is running."
+    ${APPSTATUS} > /dev/null
+    if [ $? -eq 0 ]; then
+      log "${NICE_NAME} is already running."
+    else
+      log "${NICE_NAME} is down, restarting..."
+      restart
+    fi
+  else
+    $(crontab -l | grep 'vpn.service' > /dev/null)
+    if [ $? -eq 1 ]; then
+      ((crontab -l; echo "*/5 * * * * ${ROOT}vpn.service status")| crontab -)
+    fi
+    restart
+  fi
+}
+
+stop() {
+  log "Checking status of ${NICE_NAME}..."
+  crontab -l | grep -v 'vpn.service' | crontab -
+  ${APPSTATUS} > /dev/null
+  if [ $? -eq 0 ]; then
+    service transmission onestop
+    wait $!
+    service openvpn onestop
+    wait $!
+    log "${NICE_NAME} is down"
+  else
+    log "${NICE_NAME} is already down"
+  fi
+}
+
+
+
+status() {
+  log "Checking status of ${NICE_NAME}."
+  ${VPNSTATUS} > /dev/null
+  if [ $? -eq 0 ]; then
+    log "VPN is running"
+    ${APPSTATUS} > /dev/null
+    if [ $? -eq 0 ]; then
+      log "${NICE_NAME} is running"
+    else
+      log "${NICE_NAME} is down"
+      restart
+    fi
+  else
+    log "${NICE_NAME} is down"
+    $(crontab -l | grep 'vpn.service' > /dev/null)
+    if [ $? -eq 0 ]; then
+      restart
+    fi
+  fi
+}
+
+restart() {
+  service transmission onestop
+  wait $!
+  service openvpn onestop
+  wait $!
+
+  service openvpn onestart
+  wait $!
+  sleep 4
+  TUN=$(ifconfig tun0 | grep inet | awk '{print $2}')
+  sed -i.bak -E 's!\"bind-address-ipv4\".*!\"bind-address-ipv4\":\ \"'${TUN}'\",!g' transmission/settings.json 
+  service transmission onestart
+  wait $!
+}
+
+RET=0
+if [ "${USER}" = "root" ]; then
+  case "$1" in
+    start)
+      start
+      ;;
+    stop)
+      stop
+      ;;
+    status)
+      status
+      ;;
+    *)
+      echo "No option was supplied"
+      echo "Syntax: $0 (start|stop|status)"
+  esac
+else
+  log "$(whoami) cannot run this script!"
+  RET=1
+fi
+
+exit ${RET}

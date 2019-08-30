@@ -1,0 +1,19 @@
+#!/usr/local/bin/bash
+
+IP=$(wget -qO- http://wtfismyip.com/text)
+echo ${IP}
+
+service transmission onestop
+wait $!
+service openvpn onestop
+wait $!
+
+service openvpn onestart
+wait $!
+sleep 4
+TUN=$(ifconfig tun0 | grep inet | awk '{print $2}')
+sed -i.bak -E 's!\"bind-address-ipv4\".*!\"bind-address-ipv4\":\ \"'${TUN}'\",!g' transmission/settings.json 
+service transmission onestart
+wait $!
+
+wget -qO- http://wtfismyip.com/text
