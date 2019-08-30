@@ -18,7 +18,7 @@ VPNSTATUS="pgrep -u root -f openvpn"
 
 log() {
   # Log to stdout
-  echo "$1"
+  echo "$(/bin/date '+%b %d %H:%M:%S') : ${1}"
 }
 
 start() {
@@ -36,7 +36,7 @@ start() {
   else
     $(crontab -l | grep 'vpn.service' > /dev/null)
     if [ $? -eq 1 ]; then
-      ((crontab -l; echo "*/5 * * * * ${ROOT}vpn.service status")| crontab -)
+      ((crontab -l; echo "*/5 * * * * ${ROOT}vpn.service status >> /var/log/vpn.log 2>&1")| crontab -)
     fi
     restart
   fi
@@ -72,7 +72,7 @@ status() {
       restart
     fi
   else
-    log "${NICE_NAME} is down"
+    log "VPN is down"
     $(crontab -l | grep 'vpn.service' > /dev/null)
     if [ $? -eq 0 ]; then
       restart
