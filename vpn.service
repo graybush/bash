@@ -47,9 +47,9 @@ stop() {
   crontab -l | grep -v 'vpn.service' | crontab -
   ${APPSTATUS} > /dev/null
   if [ $? -eq 0 ]; then
-    service transmission onestop
+    /usr/sbin/service transmission onestop
     wait $!
-    service openvpn onestop
+    /usr/sbin/service openvpn onestop
     wait $!
     log "${NICE_NAME} is down"
   else
@@ -81,17 +81,17 @@ status() {
 }
 
 restart() {
-  service transmission onestop
+  /usr/sbin/service transmission onestop
   wait $!
-  service openvpn onestop
+  /usr/sbin/service openvpn onestop
   wait $!
 
-  service openvpn onestart
+  /usr/sbin/service openvpn onestart
   wait $!
   sleep 4
-  TUN=$(ifconfig tun0 | grep inet | awk '{print $2}')
-  sed -i.bak -E 's!\"bind-address-ipv4\".*!\"bind-address-ipv4\":\ \"'${TUN}'\",!g' transmission/settings.json 
-  service transmission onestart
+  TUN=$(/sbin/ifconfig tun0 | grep inet | awk '{print $2}')
+  sed -i.bak -E 's!\"bind-address-ipv4\".*!\"bind-address-ipv4\":\ \"'${TUN}'\",!g' /transmission/settings.json
+  /usr/sbin/service transmission onestart
   wait $!
 }
 
